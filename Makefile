@@ -1,0 +1,2 @@
+shell:
+	scrapy shell 
