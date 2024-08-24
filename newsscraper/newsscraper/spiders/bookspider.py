@@ -11,11 +11,10 @@ class BookspiderSpider(scrapy.Spider):
         books = response.css("article.product_pod")
 
         for book in books:
-            yield {
-                "name": book.css("h3 a::text").get(),
-                "price": book.css(".product_price .price_color::text").get(),
-                "url": book.css("h3 a").attrib["href"],
-            }
+            relative_url = book.css("h3 a ::attr(href)").get()
+            book_url = self.pagination_url + relative_url
+
+            yield response.follow(book_url, callback=self.parse_book_page)
 
         if next_page := response.css(".next a::attr(href)").get():
             # We split the URL and get the last part of it
@@ -24,3 +23,34 @@ class BookspiderSpider(scrapy.Spider):
             next_page_url = self.pagination_url + next_page
             print(f"{next_page_url = }")
             yield response.follow(next_page_url, callback=self.parse)
+
+    def parse_book_page(self, response):
+        """
+        This method will parse the book page and extract the information
+        """
+        bread_crumb_xpath = "//ul[@class='breadcrumb']/li[@class='active']/preceding-sibling::li[1]/a/text()"
+        description_xpath = (
+            "//div[@id='product_description']/following-sibling::p/text()"
+        )
+
+        title = response.css(".product_main h1::text").get()
+        category = response.xpath(bread_crumb_xpath).get()
+        description = response.xpath(description_xpath).get()
+        price = response.css("p.price_color::text").get()
+
+        table_rows = response.css("table tr")
+
+        all_keys = table_rows.css("th ::text").getall()
+        all_values = table_rows.css("td ::text").getall()
+
+        table = dict(zip(all_keys, all_values))
+        rating = response.css("p.star-rating").attrib["class"].split()[-1]
+
+        yield {
+            "title": title,
+            "category": category,
+            "price": price,
+            "description": description,
+            "rating": rating,
+            "table": table,
+        }
