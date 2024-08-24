@@ -1,4 +1,5 @@
 import scrapy
+from newsscraper.items import BookItem
 
 
 class BookspiderSpider(scrapy.Spider):
@@ -46,7 +47,7 @@ class BookspiderSpider(scrapy.Spider):
         table = dict(zip(all_keys, all_values))
         rating = response.css("p.star-rating").attrib["class"].split()[-1]
 
-        yield {
+        payload = {
             "title": title,
             "category": category,
             "price": price,
@@ -54,3 +55,5 @@ class BookspiderSpider(scrapy.Spider):
             "rating": rating,
             "table": table,
         }
+
+        yield BookItem(**payload)
